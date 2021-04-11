@@ -1,6 +1,6 @@
 use std::result::*;
 use std::fs::File;
-use std::io::Read;
+use std::sync::Arc;
 use std::io::BufReader;
 use std::*;
 
@@ -8,39 +8,40 @@ use log::*;
 use failure::*;
 
 
+
+const SDR_SAMPLES: usize = 256000;
+
 pub trait SDR: Send + Sync + 'static {
     fn init(&self) -> Result<(), Error>;
-    fn run(&self) -> Result<(), Error>;
+    fn run(&mut self) -> Result<(), Error>;
     fn close(&self) -> Result<(), Error>;
 }
  
 
 pub struct FileSDR {
-    pub path: String
+    pub path: String,
+    pub producer: ringbuf::Producer<u8>
 }
 
 impl SDR for FileSDR {
     fn init(&self) -> Result<(), Error> {
         Ok(())
     }
-    fn run(&self) -> Result<(), Error> {
+    fn run(&mut self) -> Result<(), Error> {
         debug!("starting FileSDR with {}", self.path);
 
         let file = File::open(&self.path)?;
         let mut reader = BufReader::new(file);
 
-        let mut buf: [u8; 256] = [0; 256];
         loop {
-            match reader.read(&mut buf) {
-                Ok(_) => {
-                    debug!("read samples from dump {:?}", buf);
-                    thread::sleep(time::Duration::from_millis(500));
-                },
+            match self.producer.read_from(&mut reader, Some(10)) {
+                Ok(count) => debug!("read {} samples from dump", count),
                 Err(e) => {
-                    error!("got error: {:?}", e);
+                    error!("error reading from dump: {:?}", e); 
                     break;
                 }
             }
+            thread::sleep(time::Duration::from_millis(50))
         }
 
         Ok(())
@@ -60,7 +61,7 @@ impl SDR for RtlSDR {
     fn init(&self) -> Result<(), Error> {
         Ok(())
     }
-    fn run(&self) -> Result<(), Error> {
+    fn run(&mut self) -> Result<(), Error> {
         debug!("starting rtl-sdr with device-id {}", self.device_id);
        
         let (mut ctl, mut reader) = rtlsdr_mt::open(0).unwrap();

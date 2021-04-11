@@ -3,6 +3,8 @@ use failure::*;
 use structopt::StructOpt;
 use log::*;
 
+use ringbuf::*;
+
 use fishfinder::*;
 
 #[derive(StructOpt)]
@@ -13,14 +15,13 @@ struct Cli {
 }
 
 
-fn start_sdr<T: sdr::SDR>(sdr: Arc<T>) -> Result<(), Error> {
+fn start_sdr<T: sdr::SDR>(mut sdr: T) -> Result<(), Error> {
     sdr.init()?;
 
-    let handle = std::thread::spawn(move || {
+    std::thread::spawn(move || {
         sdr.run().expect("error running sdr");
     });
 
-    handle.join().expect("error waiting for sdr thread");
     Ok(())
 }
 
@@ -32,16 +33,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Cli::from_args();
 
 
+    // setup iq sample buffer
+    let iq_buffer = RingBuffer::<u8>::new(2000000);
+    let (iq_producer, mut consumer) = iq_buffer.split();
+
     match args.path {
         Some(path) => {
-            let sdr = Arc::new(sdr::FileSDR{path: path});
+            let sdr = sdr::FileSDR{path: path, producer: iq_producer};
             start_sdr(sdr)?;
         }
         _ =>  {
-            let sdr = Arc::new(sdr::RtlSDR{device_id: 0});
+            let sdr = sdr::RtlSDR{device_id: 0};
             start_sdr(sdr)?;
         }
     }
+
+    // magnitude vector processor
+    loop {
+        match consumer.pop() {
+            Some(v) => {
+                trace!("got val {}", v);
+            }
+            None => {},
+        }
+    }
+
+    // preamble detector 
+
+    // decoder 
 
     Ok(())
 }
