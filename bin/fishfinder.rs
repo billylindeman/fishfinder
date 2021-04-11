@@ -8,8 +8,8 @@ use fishfinder::*;
 #[derive(StructOpt)]
 #[structopt(name = "fishfinder", about = "ads-b tracker for rtl-sdr")]
 struct Cli {
-    #[structopt(help = "path")]
-    path: String,
+    #[structopt(short, long)]
+    path: Option<String>,
 }
 
 
@@ -31,9 +31,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let args = Cli::from_args();
 
-    let sdr = Arc::new(sdr::FileSDR{path: args.path});
-    start_sdr(sdr)?;
 
+    match args.path {
+        Some(path) => {
+            let sdr = Arc::new(sdr::FileSDR{path: path});
+            start_sdr(sdr)?;
+        }
+        _ =>  {
+            let sdr = Arc::new(sdr::RtlSDR{device_id: 0});
+            start_sdr(sdr)?;
+        }
+    }
 
     Ok(())
 }

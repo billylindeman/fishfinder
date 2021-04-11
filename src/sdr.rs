@@ -50,3 +50,32 @@ impl SDR for FileSDR {
     }
 }
 
+
+
+pub struct RtlSDR {
+    pub device_id: u8,
+}
+
+impl SDR for RtlSDR {
+    fn init(&self) -> Result<(), Error> {
+        Ok(())
+    }
+    fn run(&self) -> Result<(), Error> {
+        debug!("starting rtl-sdr with device-id {}", self.device_id);
+       
+        let (mut ctl, mut reader) = rtlsdr_mt::open(0).unwrap();
+
+        ctl.enable_agc().unwrap();
+        ctl.set_ppm(0).unwrap();
+        ctl.set_center_freq(1_090_000_000).unwrap();
+
+        reader.read_async(4, 32768, |bytes| {
+            debug!("got buffer from rtl-sdr iq = [{}{}]", bytes[0], bytes[1])
+        }).unwrap();
+
+        Ok(())
+    }
+    fn close(&self) -> Result<(), Error> {
+        Err(format_err!("not implemented"))
+    }
+}
