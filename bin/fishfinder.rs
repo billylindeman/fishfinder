@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use failure::*;
 use structopt::StructOpt;
+use log::*;
 
 use fishfinder::*;
 
@@ -25,6 +26,9 @@ fn start_sdr<T: sdr::SDR>(sdr: Arc<T>) -> Result<(), Error> {
 
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    pretty_env_logger::init();
+    log::set_max_level(LevelFilter::Trace);
+
     let args = Cli::from_args();
 
     let sdr = Arc::new(sdr::FileSDR{path: args.path});
