@@ -35,7 +35,7 @@ impl SDR for FileSDR {
 
         loop {
             match self.producer.read_from(&mut reader, Some(500)) {
-                Ok(count) => debug!("read {} samples from dump", count),
+                Ok(count) => trace!("read {} samples from dump", count),
                 Err(e) => {
                     error!("error reading from dump: {:?}", e); 
                     break;
@@ -69,6 +69,7 @@ impl SDR for RtlSDR {
 
         ctl.enable_agc().unwrap();
         ctl.set_ppm(0).unwrap();
+        ctl.set_sample_rate(2000000).unwrap();
         ctl.set_center_freq(1_090_000_000).unwrap();
 
         reader.read_async(4, 32768, |bytes| {
