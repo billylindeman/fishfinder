@@ -188,6 +188,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
             debug!("got packet: {:?}", hex::encode(msg));
+
+            match adsb::parse_binary(&msg) {
+                Ok((message, _)) => {
+                    info!("mode-s message {} => {:#?}", hex::encode(msg), message);
+                    // if let adsb::MessageKind::ADSBMessage{crc: true, kind, ..} = message.kind {
+                    //     info!("ads-b message {} => {:#?}", hex::encode(msg), kind);
+                    // }
+                } ,
+                Err(error) => error!("error parsing ads-b frame {:#?}", error),
+            }
         }
 
         
@@ -197,6 +207,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
     // decoder 
+
+        
 
     sig_thread.join().unwrap();
     Ok(())
