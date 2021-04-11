@@ -43,7 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             start_sdr(sdr)?;
         }
         _ =>  {
-            let sdr = sdr::RtlSDR{device_id: 0};
+            let sdr = sdr::RtlSDR{device_id: 0, producer: iq_producer};
             start_sdr(sdr)?;
         }
     }
