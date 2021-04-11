@@ -34,7 +34,7 @@ impl SDR for FileSDR {
         let mut reader = BufReader::new(file);
 
         loop {
-            match self.producer.read_from(&mut reader, Some(10)) {
+            match self.producer.read_from(&mut reader, Some(500)) {
                 Ok(count) => debug!("read {} samples from dump", count),
                 Err(e) => {
                     error!("error reading from dump: {:?}", e); 
@@ -72,7 +72,7 @@ impl SDR for RtlSDR {
         ctl.set_center_freq(1_090_000_000).unwrap();
 
         reader.read_async(4, 32768, |bytes| {
-            debug!("got buffer from rtl-sdr iq = [{}{}]", bytes[0], bytes[1]);
+            trace!("got buffer from rtl-sdr iq");
             self.producer.push_slice(bytes);
         }).unwrap();
 
