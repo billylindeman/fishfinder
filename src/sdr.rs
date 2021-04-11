@@ -1,19 +1,33 @@
 use std::result::*;
 
+use failure::*;
 
-pub enum Error {
-    ErrorGeneric,
+
+pub trait SDR: Send + Sync + 'static {
+    fn init(&self) -> Result<(), Error>;
+    fn run(&self) -> Result<(), Error>;
+    fn close(&self) -> Result<(), Error>;
 }
-
-pub trait SDR {
-    fn init() -> Result<(), Error>;
-    fn open() -> Result<(), Error>;
-    fn run() -> Result<(), Error>;
-    fn close() -> Result<(), Error>;
-}
-
+ 
 
 pub struct FileSDR {
     pub path: String
+}
+
+impl SDR for FileSDR {
+    fn init(&self) -> Result<(), Error> {
+        Ok(())
+    }
+    fn run(&self) -> Result<(), Error> {
+
+
+
+
+
+        Ok(())
+    }
+    fn close(&self) -> Result<(), Error> {
+        Err(format_err!("not implemented"))
+    }
 }
 
