@@ -23,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     crossbeam::thread::scope(move |scope| {
         // setup iq sample buffer
         
-        let mut iq_consumer = match args.path {
+        let iq_sample_src = match args.path {
             Some(path) => {
                 let sdr = sdr::FileSDR{path: path};
                 sdr.produce(scope)
@@ -36,11 +36,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
 
 
-        let magnitude = decode::ConvertIQToMagnitude::new();
-        let signal_consumer = magnitude.transform(scope, iq_consumer);
+        let signal_src = decode::ConvertIQToMagnitude::new()
+            .transform(scope, iq_sample_src);
+        let frame_src = decode::ModeSFrameDetector::new()
+            .transform(scope, signal_src);
 
-        // let frame_detector = decode::ModeSFrameDetector::new();
-        // let frame_consumer = frame_detector.transform(&mut signal_consumer);
+        decode::ModeSFrameDecoder::new().consume(frame_src);
     }).unwrap();
 
 
