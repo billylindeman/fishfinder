@@ -71,6 +71,8 @@ impl<'env> SignalSrc<'env, u8> for RtlSDR {
             }).unwrap();
 
 
+            debug!("reader thread finished");
+
         });
         
         iq_consumer

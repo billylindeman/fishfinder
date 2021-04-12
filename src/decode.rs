@@ -46,8 +46,10 @@ impl<'env> SignalTransform<'env,u8, u8> for ConvertIQToMagnitude {
                 let q: f32 = (iq[1] as i16 - 127 as i16).into();
                 let mag: u8 = (i*i+q*q).sqrt().round() as u8;
 
-                // trace!("got magnitude: {}", mag);
-                sig_producer.push(mag).expect("unable to push magnitude");
+                while let Err(_) = sig_producer.push(mag) {
+                    trace!("magnitude buffer overrun");
+                    std::thread::sleep(time::Duration::from_millis(1));
+                }
             }
         });
         
@@ -127,7 +129,7 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
                     m.pop_front();
                     m.push_back(s);
                 }else {
-                    std::thread::sleep(time::Duration::from_millis(10));
+                    std::thread::sleep(time::Duration::from_millis(1));
                 }
 
                 if !ModeSFrameDetector::detect_preamble(&m) {
