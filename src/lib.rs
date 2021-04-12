@@ -2,15 +2,16 @@ pub mod sdr;
 pub mod decode;
 
 
+use crossbeam::thread;
 
-pub trait SignalSrc<Output> {
-    fn produce(&self) -> ringbuf::Consumer<Output>;
+pub trait SignalSrc<'env, Output> {
+    fn produce(&self, scope: &thread::Scope<'env>) -> ringbuf::Consumer<Output>;
 }
 
-pub trait SignalSink<Input> {
-    fn consume(&self, src: &'static mut ringbuf::Consumer<Input>);
+pub trait SignalSink<'env, Input> {
+    fn consume(&self, src: ringbuf::Consumer<Input>);
 }
 
-pub trait SignalTransform<Input,Output> {
-    fn transform(&self, src: &'static mut ringbuf::Consumer<Input>) -> ringbuf::Consumer<Output>;
+pub trait SignalTransform<'env,Input,Output> {
+    fn transform<'b>(&self, scope: &thread::Scope<'env>, src: ringbuf::Consumer<Input>) -> ringbuf::Consumer<Output>;
 }
