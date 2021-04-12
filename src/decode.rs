@@ -10,8 +10,10 @@ use crossbeam_utils::thread;
 use crate::*;
 
 const MODES_PREAMBLE_BITS: usize = 8;
+const MODES_SHORT_MSG_BITS: usize = 56;
 const MODES_LONG_MSG_BITS: usize = 112;
-const MODES_LONG_MSG_BYTES: usize = 14;
+const MODES_SHORT_MSG_BYTES: usize = MODES_SHORT_MSG_BITS / 8;
+const MODES_LONG_MSG_BYTES: usize = MODES_LONG_MSG_BITS / 8;
 const MODES_MAGNITUDE_CAPACITY: usize = 1000000;
 const MODES_FRAME_CAPACITY: usize = 1024;
 
@@ -171,6 +173,31 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
                         bits[i+6]<<1 | 
                         bits[i+7];
                 }
+
+                let msglen = match frame_bytes[0]>>3 {
+                    16 | 17 | 19 | 20 | 21 => MODES_LONG_MSG_BYTES,
+                    _ => MODES_SHORT_MSG_BYTES,
+                };
+
+
+                debug!("found ads-b: {:?}", hex::encode(&frame_bytes[0..msglen]));
+
+                // check high/low deltas for bit confidence
+                debug!("delta checking msglen {}", msglen);
+                let mut delta = 0;
+                for i in (0..msglen*8*2).step_by(2) {
+                    delta += (frame_samples[i] as i32 - frame_samples[i+1] as i32).abs();
+                }
+
+                delta /= msglen as i32 * 4;
+
+                debug!("delta: {}", delta);
+                if delta < 16 {
+                    // not above squelch threshold
+                    debug!("skipping sample due to delta check");
+                    continue;
+                }
+
 
                 frame_producer.push(frame_bytes).expect("error pushing mode-s frame");
                 // m = vec![0; MODES_PREAMBLE_BITS * 2].into();
