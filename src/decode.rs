@@ -200,7 +200,6 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
 
                 frame_producer.push(frame_bytes[0..msglen].into()).expect("error pushing mode-s frame");
                 // m = vec![0; MODES_PREAMBLE_BITS * 2].into();
-
            }
         });
 
@@ -226,9 +225,12 @@ impl<'env> SignalSink<'env, ModeSFrame> for ModeSFrameDecoder {
             if let Some(frame) = src.pop() {
                 match adsb::parse_binary(&frame) {
                     Ok((message, _)) => {
-                        info!("mode-s message {} => {:#?}", hex::encode(frame), message);
+                        match message.kind {
+                            adsb::MessageKind::Unknown => {},
+                            _ => info!("mode-s message {} => {:#?}", hex::encode(frame), message),
+                        }
                         // if let adsb::MessageKind::ADSBMessage{crc: true, kind, ..} = message.kind {
-                        //     info!("ads-b message {} => {:#?}", hex::encode(msg), kind);
+                        //     info!("ads-b message {} => {:#?}", hex::encode(frame), kind);
                         // }
                     } ,
                     Err(error) => error!("error parsing ads-b frame {:#?}", error),
