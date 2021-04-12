@@ -56,7 +56,7 @@ impl<'env> SignalTransform<'env,u8, u8> for ConvertIQToMagnitude {
 }
 
 
-type ModeSFrame = [u8; MODES_LONG_MSG_BYTES];
+type ModeSFrame = Vec<u8>;
 
 pub struct ModeSFrameDetector{
     pub closed: AtomicBool, 
@@ -161,7 +161,7 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
                 }
 
                 /* Pack bits into bytes */
-                let mut frame_bytes: ModeSFrame = [0; 14];
+                let mut frame_bytes: ModeSFrame = [0; 14].into();
                 for i in (0..bits.len()).step_by(8) {
                     frame_bytes[i/8] =
                         bits[i]<<7 | 
@@ -180,10 +180,9 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
                 };
 
 
-                debug!("found ads-b: {:?}", hex::encode(&frame_bytes[0..msglen]));
+                debug!("found ads-b frame {:?}", hex::encode(&frame_bytes[0..msglen]));
 
                 // check high/low deltas for bit confidence
-                debug!("delta checking msglen {}", msglen);
                 let mut delta = 0;
                 for i in (0..msglen*8*2).step_by(2) {
                     delta += (frame_samples[i] as i32 - frame_samples[i+1] as i32).abs();
@@ -199,7 +198,7 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
                 }
 
 
-                frame_producer.push(frame_bytes).expect("error pushing mode-s frame");
+                frame_producer.push(frame_bytes[0..msglen].into()).expect("error pushing mode-s frame");
                 // m = vec![0; MODES_PREAMBLE_BITS * 2].into();
 
            }

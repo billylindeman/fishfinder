@@ -35,7 +35,7 @@ impl<'env> SignalSrc<'env, u8> for FileSDR {
                         break;
                     }
                 }
-                std::thread::sleep(time::Duration::from_millis(50))
+                std::thread::sleep(time::Duration::from_millis(10))
             }
             
         });
