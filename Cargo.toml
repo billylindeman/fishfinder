@@ -8,6 +8,9 @@ edition = "2018"
 
 [dependencies]
 adsb = { git = "https://github.com/asmarques/adsb"}
+crossbeam = "0.8.0"
+crossbeam-channel = "0.5.1"
+crossbeam-utils = "0.8.3"
 failure = "0.1.8"
 hex = "0.4.3"
 log = "0.4.14"

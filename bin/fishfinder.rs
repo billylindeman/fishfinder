@@ -9,6 +9,7 @@ use std::io::{Read};
 use ringbuf::*;
 
 use fishfinder::*;
+use fishfinder::SignalTransform;
 
 #[derive(StructOpt)]
 #[structopt(name = "fishfinder", about = "ads-b tracker for rtl-sdr")]
@@ -54,25 +55,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
     // magnitude vector processor
-    let signal_buffer = RingBuffer::<u8>::new(1000000);
-    let (mut sig_producer, mut sig_consumer) = signal_buffer.split();
-    let sig_thread = std::thread::spawn(move || {
-        debug!("starting magnitude vector thread");
-        loop {
-            let mut iq: [u8; 2] = [0; 2]; 
-            if iq_consumer.is_empty() {
-                continue;
-            }
-            iq_consumer.pop_slice(&mut iq);
+    // let signal_buffer = RingBuffer::<u8>::new(1000000);
+    // let (mut sig_producer, mut sig_consumer) = signal_buffer.split();
+    // let sig_thread = std::thread::spawn(move || {
+    //     debug!("starting magnitude vector thread");
+    //     loop {
+    //         let mut iq: [u8; 2] = [0; 2]; 
+    //         if iq_consumer.is_empty() {
+    //             continue;
+    //         }
+    //         iq_consumer.pop_slice(&mut iq);
 
-            let i: f32 = (iq[0] as i16 - 127 as i16).into();
-            let q: f32 = (iq[1] as i16 - 127 as i16).into();
-            let mag: u8 = (i*i+q*q).sqrt().round() as u8;
+    //         let i: f32 = (iq[0] as i16 - 127 as i16).into();
+    //         let q: f32 = (iq[1] as i16 - 127 as i16).into();
+    //         let mag: u8 = (i*i+q*q).sqrt().round() as u8;
 
-            // trace!("got magnitude: {}", mag);
-            sig_producer.push(mag).expect("unable to push magnitude");
-        }
-    });
+    //         // trace!("got magnitude: {}", mag);
+    //         sig_producer.push(mag).expect("unable to push magnitude");
+    //     }
+    // });
+
+    let mag = decode::ConvertIQToMagnitude::new();
+    let sig_consumer = mag.transform(&mut iq_consumer);
 
     // demodulator
     let packet_buffer = RingBuffer::<Vec<u8>>::new(1000);
@@ -191,10 +195,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             match adsb::parse_binary(&msg) {
                 Ok((message, _)) => {
-                    info!("mode-s message {} => {:#?}", hex::encode(msg), message);
-                    // if let adsb::MessageKind::ADSBMessage{crc: true, kind, ..} = message.kind {
-                    //     info!("ads-b message {} => {:#?}", hex::encode(msg), kind);
-                    // }
+                    // info!("mode-s message {} => {:#?}", hex::encode(msg), message);
+                    if let adsb::MessageKind::ADSBMessage{kind, ..} = message.kind {
+                        info!("ads-b message {} => {:#?}", hex::encode(msg), kind);
+                    }
                 } ,
                 Err(error) => error!("error parsing ads-b frame {:#?}", error),
             }
@@ -204,12 +208,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
 
-
-
     // decoder 
-
-        
-
-    sig_thread.join().unwrap();
     Ok(())
 }
