@@ -94,7 +94,7 @@ impl<'env> ModeSFrameDetector {
             let high = (((m[0] as i32 + m[2] as i32 + m[7] as i32 + m[9] as i32))/6) as u8;
             if m[4] >= high || m[5] >= high {
                 trace!("Too high level in samples between 3 and 6 {:?}", m);
-                // return false;
+                return false;
             }
 
             /* Similarly samples in the range 11-14 must be low, as it is the
@@ -109,7 +109,6 @@ impl<'env> ModeSFrameDetector {
                 return false;
             }
 
-            debug!("detected preamble!");
             return true;
     }
 }
@@ -174,7 +173,7 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
                 }
 
                 frame_producer.push(frame_bytes).expect("error pushing mode-s frame");
-                m = vec![0; MODES_PREAMBLE_BITS * 2].into();
+                // m = vec![0; MODES_PREAMBLE_BITS * 2].into();
 
            }
         });
@@ -209,6 +208,8 @@ impl<'env> SignalSink<'env, ModeSFrame> for ModeSFrameDecoder {
                     Err(error) => error!("error parsing ads-b frame {:#?}", error),
                 }
 
+            }else {
+                std::thread::sleep_ms(10);
             }
 
         }

@@ -29,9 +29,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 sdr.produce(scope)
             }
             _ =>  {
-                // let sdr = sdr::RtlSDR{device_id: 0, producer: iq_producer};
-                // start_sdr(sdr);
-                panic!("not implemented")
+                let sdr = sdr::RtlSDR{device_id: 0};
+                sdr.produce(scope)
             }
         };
 
