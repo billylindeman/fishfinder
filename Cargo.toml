@@ -23,3 +23,7 @@ structopt = "0.3.21"
 [[bin]]
 name = "fishfinder"
 path = "./bin/fishfinder.rs"
+
+[[bin]]
+name = "foreflight-discover"
+path = "./bin/foreflight-discover.rs"
