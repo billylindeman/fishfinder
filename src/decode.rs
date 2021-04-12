@@ -15,7 +15,7 @@ pub const MODES_LONG_MSG_BITS: usize = 112;
 pub const MODES_SHORT_MSG_BYTES: usize = MODES_SHORT_MSG_BITS / 8;
 pub const MODES_LONG_MSG_BYTES: usize = MODES_LONG_MSG_BITS / 8;
 pub const MODES_MAGNITUDE_CAPACITY: usize = 1000000;
-pub const MODES_FRAME_CAPACITY: usize = 1024;
+pub const MODES_FRAME_CAPACITY: usize = 4096;
 
 pub struct ConvertIQToMagnitude{
     pub closed: AtomicBool, 
@@ -176,7 +176,8 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
                         bits[i+7];
                 }
 
-                let msglen = match frame_bytes[0]>>3 {
+                let msgtype = frame_bytes[0] >> 3;
+                let msglen = match msgtype {
                     16 | 17 | 19 | 20 | 21 => MODES_LONG_MSG_BYTES,
                     _ => MODES_SHORT_MSG_BYTES,
                 };
@@ -207,16 +208,21 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
                 let crc2: u32 = crc::modes_checksum(&frame_bytes);
                 let valid = crc == crc2;
 
-                debug!("crc: {} crc2:{} match: {}",crc, crc2, valid);
-                if !valid {
-                    trace!("skipping sample due to invalid checksum");
-                    //todo attempt bit repair!
-                    continue;
-                }
+                debug!("crc: {:#x} crc2:{:#x} match: {}",crc, crc2, valid);
 
-
-                frame_producer.push(frame_bytes[0..msglen].into()).expect("error pushing mode-s frame");
-                // m = vec![0; MODES_PREAMBLE_BITS * 2].into();
+                if valid {
+                    frame_producer.push(frame_bytes[0..msglen].into()).expect("error pushing mode-s frame");
+                } 
+                
+                // else if msgtype == 11 || msgtype == 17 {
+                //     debug!("crc mismatch, attempting bit repair on frame");
+                //     if let Some(repaired_frame) = crc::modes_repair_single_bit(&frame_bytes[0..msglen].into()) {
+                //         debug!("repaired frame");
+                //         frame_producer.push(repaired_frame).expect("error pushing mode-s frame");
+                //     }else {
+                //         debug!("repair failed");
+                //     }
+                // }
            }
         });
 

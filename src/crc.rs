@@ -1,4 +1,5 @@
 use crate::decode;
+use log::*;
 
 /* Parity table for MODE S Messages.
  * The table contains 112 elements, every element corresponds to a bit set
@@ -54,4 +55,32 @@ pub fn modes_checksum(frame: &Vec<u8>)-> u32 {
         }
     }
     return crc; /* 24 bit checksum. */
+}
+
+
+
+
+// bit repair of frame
+pub fn modes_repair_single_bit(frame: &Vec<u8>) -> Option<Vec<u8>> {
+
+    for j in 0..(frame.len()*8) {
+        trace!("j {}", j);
+        let byte = j/8;
+        let bitmask = 1 << (7-(j%8));
+
+        let mut new_frame = frame.to_vec();
+        new_frame[byte] ^= bitmask; /* Flip j-th bit. */
+
+        // check crc24 checksum
+        let crc: u32 = ((new_frame[new_frame.len() - 3] as u32) << 16) |
+                        ((new_frame[new_frame.len() - 2] as u32) << 8) |
+                        ((new_frame[new_frame.len() - 1] as u32));
+        let crc2: u32 = modes_checksum(&new_frame);
+
+        if crc == crc2 {
+            return Some(new_frame)
+        }
+    }
+
+    None
 }
