@@ -14,8 +14,8 @@ pub const MODES_SHORT_MSG_BITS: usize = 56;
 pub const MODES_LONG_MSG_BITS: usize = 112;
 pub const MODES_SHORT_MSG_BYTES: usize = MODES_SHORT_MSG_BITS / 8;
 pub const MODES_LONG_MSG_BYTES: usize = MODES_LONG_MSG_BITS / 8;
-pub const MODES_MAGNITUDE_CAPACITY: usize = 1000000;
-pub const MODES_FRAME_CAPACITY: usize = 4096;
+pub const MODES_MAGNITUDE_CAPACITY: usize = 2000000;
+pub const MODES_FRAME_CAPACITY: usize = 8192;
 
 pub struct ConvertIQToMagnitude{
     pub closed: AtomicBool, 
@@ -212,17 +212,15 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
 
                 if valid {
                     frame_producer.push(frame_bytes[0..msglen].into()).expect("error pushing mode-s frame");
-                } 
-                
-                // else if msgtype == 11 || msgtype == 17 {
-                //     debug!("crc mismatch, attempting bit repair on frame");
-                //     if let Some(repaired_frame) = crc::modes_repair_single_bit(&frame_bytes[0..msglen].into()) {
-                //         debug!("repaired frame");
-                //         frame_producer.push(repaired_frame).expect("error pushing mode-s frame");
-                //     }else {
-                //         debug!("repair failed");
-                //     }
-                // }
+                } else if msgtype == 17 || msgtype == 11 {
+                    debug!("crc mismatch, attempting bit repair on frame");
+                    if let Some(repaired_frame) = crc::modes_repair_single_bit(&frame_bytes[0..msglen].into()) {
+                        info!("repaired frame {} => {}", hex::encode(&frame_bytes[0..msglen]), hex::encode(&repaired_frame));
+                        frame_producer.push(repaired_frame).expect("error pushing mode-s frame");
+                    }else {
+                        debug!("repair failed");
+                    }
+                }
            }
         });
 

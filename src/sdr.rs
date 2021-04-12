@@ -9,7 +9,7 @@ use ringbuf::RingBuffer;
 
 use crate::*;
 
-const IQ_SAMPLE_CAPACITY: usize = 2000000;
+const IQ_SAMPLE_CAPACITY: usize = 4000000;
 
 pub struct FileSDR {
     pub path: String,
@@ -65,7 +65,7 @@ impl<'env> SignalSrc<'env, u8> for RtlSDR {
             ctl.set_sample_rate(2000000).unwrap();
             ctl.set_center_freq(1_090_000_000).unwrap();
 
-            reader.read_async(12, 32768, |bytes| {
+            reader.read_async(12, 256000, |bytes| {
                 // trace!("got buffer from rtl-sdr iq");
                 iq_producer.push_slice(bytes);
             }).unwrap();
