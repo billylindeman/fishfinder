@@ -19,8 +19,8 @@ impl Server {
         } = self;
 
         loop {
-            let msg = socket.recv_from(&mut buf).await?;
-            println!("got broadcast {}", std::str::from_utf8(&buf).unwrap());
+            let (len, addr) = socket.recv_from(&mut buf).await?;
+            println!("{}[recv:{}] => {}", addr, len, std::str::from_utf8(&buf).unwrap());
         }
     }
 }
