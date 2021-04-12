@@ -247,7 +247,7 @@ impl<'env> SignalSink<'env, ModeSFrame> for ModeSFrameDecoder {
                 match adsb::parse_binary(&frame) {
                     Ok((message, _)) => {
                         match message.kind {
-                            adsb::MessageKind::Unknown => {},
+                            // adsb::MessageKind::Unknown => {},
                             _ => info!("mode-s message {} => {:#?}", hex::encode(frame), message),
                         }
                         // if let adsb::MessageKind::ADSBMessage{crc: true, kind, ..} = message.kind {
