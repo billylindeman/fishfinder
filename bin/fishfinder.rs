@@ -75,9 +75,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     }
     // });
 
-    let mag = decode::ConvertIQToMagnitude::new();
-    let sig_consumer = mag.transform(&mut iq_consumer);
+    crossbeam::thread::scope(|scope| {
+        let mag = decode::ConvertIQToMagnitude::new(scope);
+        let sig_consumer = mag.transform(&mut iq_consumer);
+   
+    });
 
+    
     // demodulator
     let packet_buffer = RingBuffer::<Vec<u8>>::new(1000);
     let (mut pak_producer, pak_consumer) = packet_buffer.split();
@@ -203,8 +207,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Err(error) => error!("error parsing ads-b frame {:#?}", error),
             }
         }
-
-        
     });
 
 
