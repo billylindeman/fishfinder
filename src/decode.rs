@@ -9,13 +9,13 @@ use ringbuf::*;
 use crossbeam_utils::thread;
 use crate::*;
 
-const MODES_PREAMBLE_BITS: usize = 8;
-const MODES_SHORT_MSG_BITS: usize = 56;
-const MODES_LONG_MSG_BITS: usize = 112;
-const MODES_SHORT_MSG_BYTES: usize = MODES_SHORT_MSG_BITS / 8;
-const MODES_LONG_MSG_BYTES: usize = MODES_LONG_MSG_BITS / 8;
-const MODES_MAGNITUDE_CAPACITY: usize = 1000000;
-const MODES_FRAME_CAPACITY: usize = 1024;
+pub const MODES_PREAMBLE_BITS: usize = 8;
+pub const MODES_SHORT_MSG_BITS: usize = 56;
+pub const MODES_LONG_MSG_BITS: usize = 112;
+pub const MODES_SHORT_MSG_BYTES: usize = MODES_SHORT_MSG_BITS / 8;
+pub const MODES_LONG_MSG_BYTES: usize = MODES_LONG_MSG_BITS / 8;
+pub const MODES_MAGNITUDE_CAPACITY: usize = 1000000;
+pub const MODES_FRAME_CAPACITY: usize = 1024;
 
 pub struct ConvertIQToMagnitude{
     pub closed: AtomicBool, 
@@ -190,10 +190,25 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
 
                 delta /= msglen as i32 * 4;
 
-                debug!("delta: {}", delta);
+                trace!("delta: {}", delta);
                 if delta < 16 {
                     // not above squelch threshold
-                    debug!("skipping sample due to delta check");
+                    trace!("skipping sample due to delta check");
+                    continue;
+                }
+
+                // check crc24 checksum
+                let crc: u32 = ((frame_bytes[frame_bytes.len() - 3] as u32) << 16) |
+                                ((frame_bytes[frame_bytes.len() - 2] as u32) << 8) |
+                                ((frame_bytes[frame_bytes.len() - 1] as u32));
+                
+                let crc2: u32 = crc::modes_checksum(&frame_bytes);
+                let valid = crc == crc2;
+
+                debug!("crc: {} crc2:{} match: {}",crc, crc2, valid);
+                if !valid {
+                    trace!("skipping sample due to invalid checksum");
+                    //todo attempt bit repair!
                     continue;
                 }
 

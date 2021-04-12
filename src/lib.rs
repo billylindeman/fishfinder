@@ -1,5 +1,6 @@
 pub mod sdr;
 pub mod decode;
+pub mod crc;
 
 
 use crossbeam::thread;
