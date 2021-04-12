@@ -1,28 +1,46 @@
-use std::net::UdpSocket;
 
+#![warn(rust_2018_idioms)]
 
-fn main() -> std::io::Result<()> {
-    {
-        let mut socket = UdpSocket::bind("0.0.0.0:63093")?;
+use std::error::Error;
+use std::net::SocketAddr;
+use std::{env, io};
+use tokio::net::UdpSocket;
 
-        loop {
-            // Receives a single datagram message on the socket. If `buf` is too small to hold
-            // the message, it will be cut off.
-            let mut buf = [0; 1500];
-            let (amt, src) = socket.recv_from(&mut buf)?;
-
-            // Redeclare `buf` as slice of the received data and send reverse data back to origin.
-            // let buf = &mut buf[..amt];
-            // buf.reverse();
-            // socket.send_to(buf, &src)?;
-
-
-            println!("got packet {}", std::str::from_utf8(&buf).unwrap());
-
-        }
-
-
-    } // the socket is closed here
-    Ok(())
+struct Server {
+    socket: UdpSocket,
+    buf: Vec<u8>,
 }
 
+impl Server {
+    async fn run(self) -> Result<(), io::Error> {
+        let Server {
+            socket,
+            mut buf,
+        } = self;
+
+        loop {
+            let msg = socket.recv_from(&mut buf).await?;
+            println!("got broadcast {}", std::str::from_utf8(&buf).unwrap());
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
+    let addr = env::args()
+        .nth(1)
+        .unwrap_or_else(|| "0.0.0.0:63093".to_string());
+
+    let socket = UdpSocket::bind(&addr).await?;
+    println!("Listening on: {}", socket.local_addr()?);
+
+    let server = Server {
+        socket,
+        buf: vec![0; 1024],
+    };
+
+    // This starts the server task.
+    server.run().await?;
+
+    Ok(())
+}
