@@ -1,10 +1,9 @@
 use failure::*;
-use structopt::StructOpt;
 use log::*;
-
+use structopt::StructOpt;
 
 use fishfinder::*;
-use fishfinder::{SignalSrc, SignalTransform, SignalSink};
+use fishfinder::{SignalSink, SignalSrc, SignalTransform};
 
 #[derive(StructOpt)]
 #[structopt(name = "fishfinder", about = "ads-b tracker for rtl-sdr")]
@@ -12,7 +11,6 @@ struct Cli {
     #[structopt(short, long)]
     path: Option<String>,
 }
-
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     pretty_env_logger::init();
@@ -22,28 +20,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     crossbeam::thread::scope(move |scope| {
         // setup iq sample buffer
-        
         let iq_sample_src = match args.path {
             Some(path) => {
-                let sdr = sdr::FileSDR{path: path};
+                let sdr = sdr::FileSDR { path: path };
                 sdr.produce(scope)
             }
-            _ =>  {
-                let sdr = sdr::RtlSDR{device_id: 0};
+            _ => {
+                let sdr = sdr::RtlSDR { device_id: 0 };
                 sdr.produce(scope)
             }
         };
 
+        let signal_src = sdr::decode::ConvertIQToMagnitude::new().transform(scope, iq_sample_src);
+        let frame_src = sdr::decode::ModeSFrameDetector::new().transform(scope, signal_src);
 
-        let signal_src = decode::ConvertIQToMagnitude::new()
-            .transform(scope, iq_sample_src);
-        let frame_src = decode::ModeSFrameDetector::new()
-            .transform(scope, signal_src);
+        sdr::decode::ModeSFrameDecoder::new().consume(frame_src);
+    })
+    .unwrap();
 
-        decode::ModeSFrameDecoder::new().consume(frame_src);
-    }).unwrap();
-
-
-    // decoder 
+    // decoder
     Ok(())
 }
+
