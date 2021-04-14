@@ -1,4 +1,3 @@
-
 #![warn(rust_2018_idioms)]
 
 use std::error::Error;
@@ -13,14 +12,16 @@ struct Server {
 
 impl Server {
     async fn run(self) -> Result<(), io::Error> {
-        let Server {
-            socket,
-            mut buf,
-        } = self;
+        let Server { socket, mut buf } = self;
 
         loop {
             let (len, addr) = socket.recv_from(&mut buf).await?;
-            println!("{}[recv:{}] => {}", addr, len, std::str::from_utf8(&buf).unwrap());
+            println!(
+                "{}[recv:{}] => {}",
+                addr,
+                len,
+                std::str::from_utf8(&buf).unwrap()
+            );
         }
     }
 }
@@ -44,3 +45,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
+
