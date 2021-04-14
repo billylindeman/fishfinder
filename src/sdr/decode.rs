@@ -16,20 +16,10 @@ pub const MODES_LONG_MSG_BYTES: usize = MODES_LONG_MSG_BITS / 8;
 pub const MODES_MAGNITUDE_CAPACITY: usize = 2000000;
 pub const MODES_FRAME_CAPACITY: usize = 8192;
 
-pub struct ConvertIQToMagnitude {
-    pub closed: AtomicBool,
-}
-
-impl ConvertIQToMagnitude {
-    pub fn new() -> ConvertIQToMagnitude {
-        ConvertIQToMagnitude {
-            closed: AtomicBool::from(false),
-        }
-    }
-}
+pub struct ConvertIQToMagnitude {}
 
 impl<'env> SignalTransform<'env, u8, u8> for ConvertIQToMagnitude {
-    fn transform<'b>(&self, scope: &thread::Scope<'env>, mut src: Consumer<u8>) -> Consumer<u8> {
+    fn transform<'b>(scope: &thread::Scope<'env>, mut src: Consumer<u8>) -> Consumer<u8> {
         let (mut sig_producer, sig_consumer) = RingBuffer::new(MODES_MAGNITUDE_CAPACITY).split();
 
         debug!("starting magnitude vector thread");
@@ -55,17 +45,9 @@ impl<'env> SignalTransform<'env, u8, u8> for ConvertIQToMagnitude {
 
 type ModeSFrame = Vec<u8>;
 
-pub struct ModeSFrameDetector {
-    pub closed: AtomicBool,
-}
+pub struct ModeSFrameDetector {}
 
 impl<'env> ModeSFrameDetector {
-    pub fn new() -> ModeSFrameDetector {
-        ModeSFrameDetector {
-            closed: AtomicBool::from(false),
-        }
-    }
-
     fn detect_preamble(m: &VecDeque<u8>) -> bool {
         /* First check of relations between the first 10 samples
          * representing a valid preamble. We don't even investigate further
@@ -108,11 +90,7 @@ impl<'env> ModeSFrameDetector {
 }
 
 impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
-    fn transform(
-        &self,
-        scope: &thread::Scope<'env>,
-        mut src: Consumer<u8>,
-    ) -> Consumer<ModeSFrame> {
+    fn transform(scope: &thread::Scope<'env>, mut src: Consumer<u8>) -> Consumer<ModeSFrame> {
         let (mut frame_producer, frame_consumer) =
             RingBuffer::<ModeSFrame>::new(MODES_FRAME_CAPACITY).split();
 
@@ -233,20 +211,10 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
     }
 }
 
-pub struct ModeSFrameDecoder {
-    pub closed: AtomicBool,
-}
-
-impl<'env> ModeSFrameDecoder {
-    pub fn new() -> ModeSFrameDecoder {
-        ModeSFrameDecoder {
-            closed: AtomicBool::from(false),
-        }
-    }
-}
+pub struct ModeSFrameDecoder {}
 
 impl<'env> SignalSink<'env, ModeSFrame> for ModeSFrameDecoder {
-    fn consume(&self, mut src: Consumer<ModeSFrame>) {
+    fn consume(mut src: Consumer<ModeSFrame>) {
         loop {
             if let Some(frame) = src.pop() {
                 match adsb::parse_binary(&frame) {

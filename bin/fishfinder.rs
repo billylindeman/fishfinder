@@ -31,10 +31,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-        let signal_src = sdr::decode::ConvertIQToMagnitude::new().transform(scope, iq_sample_src);
-        let frame_src = sdr::decode::ModeSFrameDetector::new().transform(scope, signal_src);
+        let signal_src = sdr::decode::ConvertIQToMagnitude::transform(scope, iq_sample_src);
+        let frame_src = sdr::decode::ModeSFrameDetector::transform(scope, signal_src);
 
-        sdr::decode::ModeSFrameDecoder::new().consume(frame_src);
+        sdr::decode::ModeSFrameDecoder::consume(frame_src);
     })
     .unwrap();
 
