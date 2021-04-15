@@ -25,7 +25,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut my_stream_of_bytes =
         FramedRead::with_capacity(my_iq_read, BytesCodec::new(), rtl::RTL_SDR_BUFFER_SIZE);
 
-    while let Some(buf) = my_stream_of_bytes.next().await {}
+    while let Some(Ok(buf)) = my_stream_of_bytes.next().await {
+        buf.iter().for_each(|m| {
+            let n = m / 16;
+            let sig = (0..n).map(|_| "o").collect::<String>();
+            trace!("|{}", sig);
+        });
+    }
 
     trace!("stream ended");
 
