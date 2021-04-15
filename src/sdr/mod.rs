@@ -11,6 +11,7 @@ use crate::*;
 
 pub mod crc;
 pub mod decode;
+pub mod dsp;
 pub mod rtl;
 
 const IQ_SAMPLE_CAPACITY: usize = 4000000;

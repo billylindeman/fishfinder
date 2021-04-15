@@ -20,12 +20,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     log::set_max_level(LevelFilter::Trace);
     let args = Cli::from_args();
 
-    let my_async_read = rtl::Radio::open(rtl::RadioConfig::ModeS(0));
-    let mut my_stream_of_bytes = FramedRead::new(my_async_read, BytesCodec::new());
+    let my_async_read = rtl::Radio::open(rtl::RadioConfig::mode_s(0));
+    let mut my_stream_of_bytes =
+        FramedRead::with_capacity(my_async_read, BytesCodec::new(), rtl::RTL_SDR_BUFFER_SIZE);
 
-    while let Some(buf) = my_stream_of_bytes.next().await {
-        trace!("got byte baby: {:?}", buf);
-    }
+    while let Some(buf) = my_stream_of_bytes.next().await {}
 
     trace!("stream ended");
 

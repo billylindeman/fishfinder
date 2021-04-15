@@ -9,7 +9,7 @@ use tokio::{
     task,
 };
 
-const RTL_SDR_BUFFER_SIZE: usize = 32184;
+pub const RTL_SDR_BUFFER_SIZE: usize = 512000;
 
 pub struct RadioConfig {
     device_index: u8,
@@ -19,7 +19,7 @@ pub struct RadioConfig {
 }
 
 impl RadioConfig {
-    pub fn ModeS(device_index: u8) -> RadioConfig {
+    pub fn mode_s(device_index: u8) -> RadioConfig {
         RadioConfig {
             device_index: device_index,
             sample_rate: 2_000_000,
@@ -33,7 +33,6 @@ pub struct Radio {
     consumer: Consumer<u8>,
     waker: Arc<Mutex<Option<Waker>>>,
     ctl: rtlsdr_mt::Controller,
-    handle: task::JoinHandle<()>,
 }
 
 impl Radio {
@@ -54,7 +53,8 @@ impl Radio {
         ctl.set_center_freq(cfg.center_freq).unwrap();
 
         let rtl_shared_waker_slot = shared_waker_slot.clone();
-        let handle = task::spawn_blocking(move || {
+
+        task::spawn_blocking(move || {
             reader
                 .read_async(12, RTL_SDR_BUFFER_SIZE as u32, |bytes| {
                     trace!("got buffer from rtl-sdr iq");
@@ -73,7 +73,6 @@ impl Radio {
 
         Radio {
             consumer: iq_consumer,
-            handle: handle,
             waker: shared_waker_slot,
             ctl: ctl,
         }
@@ -94,6 +93,7 @@ impl AsyncRead for Radio {
 
         let mut remaining = buf.initialize_unfilled();
         let n = self.get_mut().consumer.pop_slice(&mut remaining);
+        buf.advance(n);
         trace!("rtl-sdr AsyncRead wrote {} into buf", n);
         Poll::Ready(Ok(()))
     }
@@ -102,6 +102,31 @@ impl AsyncRead for Radio {
 impl Drop for Radio {
     fn drop(&mut self) {
         &self.ctl.cancel_async_read();
-        trace!("async read canceled");
+        trace!("rtl-sdr reader thread canceled");
     }
 }
+
+#[repr(C)]
+pub struct IQ {
+    pub i: u8,
+    pub q: u8,
+}
+
+impl IQ {
+    pub fn magnitude(&self) -> u8 {
+        let i: f32 = (self.i as i16 - 127 as i16).into();
+        let q: f32 = (self.i as i16 - 127 as i16).into();
+        let mag: u8 = (i * i + q * q).sqrt().round() as u8;
+        return mag;
+    }
+}
+
+impl From<&[u8; 2]> for IQ {
+    fn from(item: &[u8; 2]) -> Self {
+        IQ {
+            i: item[0],
+            q: item[1],
+        }
+    }
+}
+
