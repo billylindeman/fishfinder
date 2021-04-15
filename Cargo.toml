@@ -19,7 +19,7 @@ ringbuf = "0.2.3"
 rtlsdr_mt = "2.1.0"
 structopt = "0.3.21"
 tokio = { version = "1.4.0", features = ["full", "tracing"] }
-tokio-util = { version = "0.6.3", features = ["full"] }
+tokio-util = { version = "0.6.6", features = ["full"] }
 tokio-stream = { version = "0.1" }
 
 

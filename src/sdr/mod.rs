@@ -11,6 +11,7 @@ use crate::*;
 
 pub mod crc;
 pub mod decode;
+pub mod rtl;
 
 const IQ_SAMPLE_CAPACITY: usize = 4000000;
 
@@ -76,4 +77,3 @@ impl<'env> SignalSrc<'env, u8> for RtlSDR {
         iq_consumer
     }
 }
-

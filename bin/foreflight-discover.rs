@@ -26,6 +26,8 @@ impl Server {
     }
 }
 
+struct GDL90Client {}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let addr = env::args()
