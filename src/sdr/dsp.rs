@@ -35,7 +35,16 @@ impl<T: AsyncRead> AsyncRead for IQMagnitudeReader<T> {
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
         trace!("iqmagnituderader poll");
+        let reader = self.get_mut().reader;
 
+        let bytebuf = ReadBuf::new(&mut [0u8; 128000]);
+        match reader.poll_read(cx, &bytebuf) {
+            Poll::Pending => {
+                cx.waker().wake_by_ref();
+                return Poll::Pending;
+            }
+            Poll::Ready(Ok(())) => {}
+        }
         //   let mut remaining = buf.initialize_unfilled();
         //   buf.advance(n);
 
