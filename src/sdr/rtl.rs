@@ -2,6 +2,7 @@ use log::*;
 use ringbuf::{Consumer, RingBuffer};
 use std::io;
 use std::pin::Pin;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 use tokio::{
@@ -32,6 +33,7 @@ impl RadioConfig {
 pub struct Radio {
     consumer: Consumer<u8>,
     waker: Arc<Mutex<Option<Waker>>>,
+    closed: Arc<AtomicBool>,
     ctl: rtlsdr_mt::Controller,
 }
 
@@ -45,6 +47,7 @@ impl Radio {
 
         // setup waker slot
         let shared_waker_slot = Arc::new(Mutex::new(Option::<Waker>::None));
+        let closed_flag = Arc::new(AtomicBool::new(false));
 
         let (mut ctl, mut reader) = rtlsdr_mt::open(cfg.device_index.into()).unwrap();
         ctl.enable_agc().unwrap();
@@ -53,21 +56,30 @@ impl Radio {
         ctl.set_center_freq(cfg.center_freq).unwrap();
 
         let rtl_shared_waker_slot = shared_waker_slot.clone();
+        let rtl_closed_flag = closed_flag.clone();
 
         task::spawn_blocking(move || {
-            reader
-                .read_async(12, RTL_SDR_BUFFER_SIZE as u32, |bytes| {
-                    trace!("got buffer from rtl-sdr iq");
-                    iq_producer.push_slice(bytes);
+            let res = reader.read_async(12, RTL_SDR_BUFFER_SIZE as u32, |bytes| {
+                trace!("got buffer from rtl-sdr iq");
+                iq_producer.push_slice(bytes);
 
-                    let mut guard = rtl_shared_waker_slot.lock().unwrap();
-                    if let Some(waker) = &*guard {
-                        waker.wake_by_ref();
-                    }
-                    *guard = Option::<Waker>::None;
-                })
-                .unwrap();
-            debug!("rtl-sdr reader thread finished");
+                let mut guard = rtl_shared_waker_slot.lock().unwrap();
+                if let Some(waker) = &*guard {
+                    waker.wake_by_ref();
+                }
+                *guard = Option::<Waker>::None;
+            });
+
+            rtl_closed_flag.store(true, Ordering::Relaxed);
+
+            // if we have a pending wake, trigger it so the AsyncReader can cleanly finish
+            let guard = rtl_shared_waker_slot.lock().unwrap();
+            if let Some(waker) = &*guard {
+                waker.wake_by_ref();
+            }
+
+            debug!("rtl-sdr reader thread finished ({:?})", res);
+
             ()
         });
 
@@ -75,6 +87,7 @@ impl Radio {
             consumer: iq_consumer,
             waker: shared_waker_slot,
             ctl: ctl,
+            closed: closed_flag,
         }
     }
 }
@@ -86,6 +99,11 @@ impl AsyncRead for Radio {
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
         trace!("rtl-sdr AsyncRead poll_read");
+
+        if self.closed.load(Ordering::Relaxed) {
+            // rtl-thread closed, this will signal EOF to upstream readers
+            return Poll::Ready(Ok(()));
+        }
         if self.consumer.is_empty() {
             *self.get_mut().waker.lock().unwrap() = Some(cx.waker().clone());
             return Poll::Pending;
@@ -103,30 +121,6 @@ impl Drop for Radio {
     fn drop(&mut self) {
         &self.ctl.cancel_async_read();
         trace!("rtl-sdr reader thread canceled");
-    }
-}
-
-#[repr(C)]
-pub struct IQ {
-    pub i: u8,
-    pub q: u8,
-}
-
-impl IQ {
-    pub fn magnitude(&self) -> u8 {
-        let i: f32 = (self.i as i16 - 127 as i16).into();
-        let q: f32 = (self.i as i16 - 127 as i16).into();
-        let mag: u8 = (i * i + q * q).sqrt().round() as u8;
-        return mag;
-    }
-}
-
-impl From<&[u8; 2]> for IQ {
-    fn from(item: &[u8; 2]) -> Self {
-        IQ {
-            i: item[0],
-            q: item[1],
-        }
     }
 }
 

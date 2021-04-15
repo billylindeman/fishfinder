@@ -8,4 +8,9 @@ use tokio::{
     io::{AsyncRead, ReadBuf},
     task,
 };
+use tokio_util::codec;
+
+pub struct ModeSFrameDetector {}
+
+impl codec::Decoder for FrameDecoder {}
 

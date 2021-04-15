@@ -26,11 +26,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         FramedRead::with_capacity(my_iq_read, BytesCodec::new(), rtl::RTL_SDR_BUFFER_SIZE);
 
     while let Some(Ok(buf)) = my_stream_of_bytes.next().await {
-        buf.iter().for_each(|m| {
-            let n = m / 16;
-            let sig = (0..n).map(|_| "o").collect::<String>();
-            trace!("|{}", sig);
-        });
+        trace!("got mag buf");
     }
 
     trace!("stream ended");

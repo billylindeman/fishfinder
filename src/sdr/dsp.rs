@@ -9,6 +9,8 @@ use tokio::{
     task,
 };
 
+use crate::sdr::rtl;
+
 #[repr(C)]
 pub struct IQ {
     pub i: u8,
@@ -24,15 +26,21 @@ impl IQ {
     }
 }
 
+const IQ_BUFFER_SIZE: usize = 512000;
+
 pub struct IQMagnitudeReader<T: AsyncRead> {
-    reader: T,
+    inner: T,
+    cap: usize,
 }
 
 impl<T: AsyncRead> IQMagnitudeReader<T> {
-    pin_utils::unsafe_pinned!(reader: T);
+    pin_utils::unsafe_pinned!(inner: T);
 
     pub fn new(inner: T) -> IQMagnitudeReader<T> {
-        IQMagnitudeReader { reader: inner }
+        IQMagnitudeReader {
+            inner: inner,
+            cap: IQ_BUFFER_SIZE,
+        }
     }
 }
 
@@ -42,19 +50,20 @@ impl<T: AsyncRead> AsyncRead for IQMagnitudeReader<T> {
         cx: &mut Context<'_>,
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
-        trace!("iqmagnituderader poll");
-        let Self { reader } = unsafe { self.get_unchecked_mut() };
-        let inner = unsafe { Pin::new_unchecked(reader) };
+        trace!("IQMagnitudeReader poll_read");
+        let Self { inner, cap } = unsafe { self.get_unchecked_mut() };
+        let inner = unsafe { Pin::new_unchecked(inner) };
 
-        let mut inner_buf = [0u8; 256000];
+        let mut inner_buf = vec![0u8; *cap];
         let mut inner_bytebuf = ReadBuf::new(&mut inner_buf);
+
         match inner.poll_read(cx, &mut inner_bytebuf) {
             Poll::Pending => {
-                cx.waker().wake_by_ref();
+                // cx.waker() gets scheduled by inner impl
                 return Poll::Pending;
             }
             Poll::Ready(Ok(())) => {
-                trace!("IQMagnitudeReader got samples, converting");
+                trace!("IQMagnitudeReader got iq-samples, calculating magnitudes");
                 let filled = inner_bytebuf.filled();
                 let ptr = filled.as_ptr() as *const IQ;
                 let iq = unsafe { std::slice::from_raw_parts::<IQ>(ptr, filled.len() / 2) };
@@ -63,12 +72,15 @@ impl<T: AsyncRead> AsyncRead for IQMagnitudeReader<T> {
                 let dst = buf.initialize_unfilled_to(magnitude_samples.len());
                 dst.copy_from_slice(&magnitude_samples);
                 buf.advance(magnitude_samples.len());
+
+                trace!(
+                    "IQMagnitudeReader wrote {} magnitudes into buf",
+                    magnitude_samples.len()
+                );
                 inner_bytebuf.clear();
             }
             Poll::Ready(e) => return Poll::Ready(e),
         }
-        //   let mut remaining = buf.initialize_unfilled();
-        //   buf.advance(n);
 
         Poll::Ready(Ok(()))
     }
