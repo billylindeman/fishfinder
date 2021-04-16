@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     while let Some(frame) = stream.next().await {
-        info!("got frame: {:?}", frame);
+        info!("got frame: {:#?}", frame);
     }
 
     trace!("stream ended");
