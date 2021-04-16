@@ -124,29 +124,34 @@ impl codec::Decoder for FrameDecoder {
     type Error = std::io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        if src.len() < (MODES_PREAMBLE_BITS + MODES_LONG_MSG_BITS) * 2 {
-            // Not enough data
-            return Ok(None);
-        }
+        // consume buffer looking for a preamble
+        loop {
+            if src.len() < (MODES_PREAMBLE_BITS + MODES_LONG_MSG_BITS) * 2 {
+                // Not enough data
+                return Ok(None);
+            }
 
-        let mut preamble: [u8; (MODES_PREAMBLE_BITS * 2)] = Default::default();
-        preamble.copy_from_slice(&src[0..(MODES_PREAMBLE_BITS * 2)]);
+            let mut preamble: [u8; (MODES_PREAMBLE_BITS * 2)] = Default::default();
+            preamble.clone_from_slice(&src[0..(MODES_PREAMBLE_BITS * 2)]);
 
-        if !FrameDecoder::detect_preamble(&preamble) {
-            // We slide the buffer window 1 sample at a time until this function detects a preamble
+            if FrameDecoder::detect_preamble(&preamble) {
+                // We slide the buffer window 1 sample at a time until this function detects a preamble
+                break;
+            }
+
             src.advance(1);
-            return Ok(None);
         }
 
         // We have a valid preamble, read full sized frame
         let mut frame_samples: [u8; MODES_LONG_MSG_BITS * 2] = [0; MODES_LONG_MSG_BITS * 2];
-        frame_samples.copy_from_slice(&src[(MODES_PREAMBLE_BITS * 2)..(MODES_LONG_MSG_BITS * 2)]);
+        let s = &src[(MODES_PREAMBLE_BITS * 2)..((MODES_PREAMBLE_BITS + MODES_LONG_MSG_BITS) * 2)];
+        frame_samples.clone_from_slice(s);
 
         let frame_bits = FrameDecoder::demodulate_samples_to_bits(frame_samples);
         let frame = FrameDecoder::pack_bits(frame_bits);
 
         // advance the buffer by the preamble and length of the actual decoded frame
-        src.advance((MODES_PREAMBLE_BITS * 2) + (frame_bits.len() * 2));
+        src.advance((MODES_PREAMBLE_BITS * 2) + (MODES_LONG_MSG_BITS * 2));
 
         Ok(Some(frame))
     }
@@ -170,7 +175,7 @@ impl Frame {
             | (frame_bytes[frame_bytes.len() - 1] as u32);
         let crc2: u32 = crc::modes_checksum(&frame_bytes);
         let valid = crc == crc2;
-        debug!("crc: {:#x} crc2:{:#x} match: {}", crc, crc2, valid);
+        trace!("crc: {:#x} crc2:{:#x} match: {}", crc, crc2, valid);
         valid
     }
 

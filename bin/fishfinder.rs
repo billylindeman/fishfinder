@@ -29,7 +29,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         rtl::RTL_SDR_BUFFER_SIZE,
     );
 
-    while let Some(Ok(frame)) = my_stream_of_bytes.next().await {
+    let mut adsb_stream = my_stream_of_bytes
+        .filter_map(|f| f.ok())
+        .filter_map(|frame| match frame.valid() {
+            true => Some(frame),
+            false => frame.try_repair(),
+        });
+
+    while let Some(frame) = adsb_stream.next().await {
         info!("got frame: {}", frame);
     }
 
