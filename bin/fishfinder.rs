@@ -3,7 +3,7 @@ use log::*;
 use std::error::Error;
 use structopt::StructOpt;
 
-use fishfinder::sdr::{dsp, rtl};
+use fishfinder::sdr::{dsp, modes, rtl};
 use tokio_stream::StreamExt;
 use tokio_util::codec::{BytesCodec, FramedRead};
 
@@ -22,11 +22,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let my_async_read = rtl::Radio::open(rtl::RadioConfig::mode_s(0));
     let my_iq_read = dsp::IQMagnitudeReader::new(my_async_read);
-    let mut my_stream_of_bytes =
-        FramedRead::with_capacity(my_iq_read, BytesCodec::new(), rtl::RTL_SDR_BUFFER_SIZE);
 
-    while let Some(Ok(buf)) = my_stream_of_bytes.next().await {
-        trace!("got mag buf");
+    let mut my_stream_of_bytes = FramedRead::with_capacity(
+        my_iq_read,
+        modes::FrameDecoder::new(),
+        rtl::RTL_SDR_BUFFER_SIZE,
+    );
+
+    while let Some(Ok(frame)) = my_stream_of_bytes.next().await {
+        info!("got frame: {}", frame);
     }
 
     trace!("stream ended");

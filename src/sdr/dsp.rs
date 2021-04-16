@@ -51,9 +51,9 @@ impl<T: AsyncRead> AsyncRead for IQMagnitudeReader<T> {
         buf: &mut ReadBuf<'_>,
     ) -> Poll<io::Result<()>> {
         trace!("IQMagnitudeReader poll_read");
+
         let Self { inner, cap } = unsafe { self.get_unchecked_mut() };
         let inner = unsafe { Pin::new_unchecked(inner) };
-
         let mut inner_buf = vec![0u8; *cap];
         let mut inner_bytebuf = ReadBuf::new(&mut inner_buf);
 
@@ -69,6 +69,7 @@ impl<T: AsyncRead> AsyncRead for IQMagnitudeReader<T> {
                 let iq = unsafe { std::slice::from_raw_parts::<IQ>(ptr, filled.len() / 2) };
 
                 let magnitude_samples: Vec<u8> = iq.iter().map(|iq| iq.magnitude()).collect();
+
                 let dst = buf.initialize_unfilled_to(magnitude_samples.len());
                 dst.copy_from_slice(&magnitude_samples);
                 buf.advance(magnitude_samples.len());

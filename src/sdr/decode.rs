@@ -164,7 +164,6 @@ impl<'env> SignalTransform<'env, u8, ModeSFrame> for ModeSFrameDetector {
                 for i in (0..msglen * 8 * 2).step_by(2) {
                     delta += (frame_samples[i] as i32 - frame_samples[i + 1] as i32).abs();
                 }
-
                 delta /= msglen as i32 * 4;
 
                 trace!("delta: {}", delta);
