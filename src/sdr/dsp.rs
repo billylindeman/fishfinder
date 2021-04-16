@@ -13,7 +13,7 @@ pub struct IQ {
 impl IQ {
     pub fn magnitude(&self) -> u8 {
         let i: f32 = (self.i as i16 - 127 as i16).into();
-        let q: f32 = (self.i as i16 - 127 as i16).into();
+        let q: f32 = (self.q as i16 - 127 as i16).into();
         let mag: u8 = (i * i + q * q).sqrt().round() as u8;
         return mag;
     }
@@ -53,9 +53,11 @@ impl<T: AsyncRead> AsyncRead for IQMagnitudeReader<T> {
                 return Poll::Pending;
             }
             Poll::Ready(Ok(())) => {
-                trace!("IQMagnitudeReader got iq-samples, calculating magnitudes");
-
                 let filled = inner_bytebuf.filled();
+                trace!(
+                    "IQMagnitudeReader got {} iq-samples, calculating magnitudes",
+                    filled.len()
+                );
                 let ptr = filled.as_ptr() as *const IQ;
                 let iq = unsafe { std::slice::from_raw_parts::<IQ>(ptr, filled.len() / 2) };
 
