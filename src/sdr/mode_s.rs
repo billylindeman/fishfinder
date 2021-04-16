@@ -63,7 +63,7 @@ impl FrameDecoder {
 
     fn demodulate_samples_to_bits(frame_samples: FrameSamples) -> FrameBits {
         // decode bits from pulses
-        let mut bits: FrameBits = [0; 112];
+        let mut bits: FrameBits = [0; MODES_LONG_MSG_BITS];
         for i in (0..frame_samples.len()).step_by(2) {
             let low = frame_samples[i];
             let high = frame_samples[i + 1];
@@ -124,23 +124,26 @@ impl codec::Decoder for FrameDecoder {
             preamble.clone_from_slice(&src[0..(MODES_PREAMBLE_BITS * 2)]);
 
             if FrameDecoder::detect_preamble(&preamble) {
-                // We slide the buffer window 1 sample at a time until this function detects a preamble
+                src.advance(MODES_PREAMBLE_BITS * 2);
                 break;
             }
 
+            // We slide the buffer window 1 sample at a time until this function detects a preamble
             src.advance(1);
         }
 
         // We have a valid preamble, read full sized frame
         let mut frame_samples: [u8; MODES_LONG_MSG_BITS * 2] = [0; MODES_LONG_MSG_BITS * 2];
-        let s = &src[(MODES_PREAMBLE_BITS * 2)..((MODES_PREAMBLE_BITS + MODES_LONG_MSG_BITS) * 2)];
+        let s = &src[0..(MODES_LONG_MSG_BITS * 2)];
         frame_samples.clone_from_slice(s);
 
         let frame_bits = FrameDecoder::demodulate_samples_to_bits(frame_samples);
         let frame = FrameDecoder::pack_bits(frame_bits);
 
+        debug!("read raw frame: {}", frame);
+
         // advance the buffer by the preamble and length of the actual decoded frame
-        src.advance((MODES_PREAMBLE_BITS * 2) + (MODES_LONG_MSG_BITS * 2));
+        src.advance(MODES_LONG_MSG_BITS * 2);
 
         Ok(Some(frame))
     }
@@ -162,13 +165,15 @@ impl Frame {
         let crc: u32 = ((frame_bytes[frame_bytes.len() - 3] as u32) << 16)
             | ((frame_bytes[frame_bytes.len() - 2] as u32) << 8)
             | (frame_bytes[frame_bytes.len() - 1] as u32);
+
         let crc2: u32 = crc::modes_checksum(&frame_bytes);
         let valid = crc == crc2;
-        trace!("crc: {:#x} crc2:{:#x} match: {}", crc, crc2, valid);
+        debug!("crc: {:#x} crc2:{:#x} match: {}", crc, crc2, valid);
         valid
     }
 
     pub fn try_repair(&self) -> Option<Frame> {
+        debug!("attempting repair {}", self);
         if let Some(repaired_frame) = crc::modes_repair_single_bit(&self.0) {
             info!(
                 "repaired frame {} => {}",
