@@ -1,5 +1,4 @@
-use crate::sdr::decode;
-use log::*;
+use super::mode_s;
 
 /* Parity table for MODE S Messages.
  * The table contains 112 elements, every element corresponds to a bit set
@@ -38,7 +37,7 @@ const MODES_CHECKSUM_TABLE: [u32; 112] = [
 
 pub fn modes_checksum(frame: &Vec<u8>) -> u32 {
     let mut crc: u32 = 0;
-    let offset: usize = match frame.len() == decode::MODES_LONG_MSG_BYTES {
+    let offset: usize = match frame.len() == mode_s::MODES_LONG_MSG_BYTES {
         true => 0,
         false => (112 - 56),
     };

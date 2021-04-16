@@ -1,15 +1,8 @@
 use log::*;
-use ringbuf::{Consumer, RingBuffer};
 use std::io;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
-use std::task::{Context, Poll, Waker};
-use tokio::{
-    io::{AsyncRead, ReadBuf},
-    task,
-};
-
-use crate::sdr::rtl;
+use std::task::{Context, Poll};
+use tokio::io::{AsyncRead, ReadBuf};
 
 #[repr(C)]
 pub struct IQ {
@@ -26,21 +19,15 @@ impl IQ {
     }
 }
 
-const IQ_BUFFER_SIZE: usize = 512000;
-
 pub struct IQMagnitudeReader<T: AsyncRead> {
     inner: T,
-    cap: usize,
 }
 
 impl<T: AsyncRead> IQMagnitudeReader<T> {
     pin_utils::unsafe_pinned!(inner: T);
 
     pub fn new(inner: T) -> IQMagnitudeReader<T> {
-        IQMagnitudeReader {
-            inner: inner,
-            cap: IQ_BUFFER_SIZE,
-        }
+        IQMagnitudeReader { inner: inner }
     }
 }
 
@@ -52,7 +39,7 @@ impl<T: AsyncRead> AsyncRead for IQMagnitudeReader<T> {
     ) -> Poll<io::Result<()>> {
         trace!("IQMagnitudeReader poll_read");
 
-        let Self { inner, cap } = unsafe { self.get_unchecked_mut() };
+        let Self { inner } = unsafe { self.get_unchecked_mut() };
         let inner = unsafe { Pin::new_unchecked(inner) };
 
         // create a buffer that is 2 * the size of our upstream buffer

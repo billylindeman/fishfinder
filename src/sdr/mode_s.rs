@@ -1,16 +1,5 @@
 use bytes::{Buf, BytesMut};
 use log::*;
-use ringbuf::{Consumer, RingBuffer};
-use std::collections::VecDeque;
-use std::io;
-use std::ops::Deref;
-use std::pin::Pin;
-use std::sync::{Arc, Mutex};
-use std::task::{Context, Poll, Waker};
-use tokio::{
-    io::{AsyncRead, ReadBuf},
-    task,
-};
 use tokio_util::codec;
 
 use super::crc;
@@ -191,4 +180,15 @@ impl Frame {
 
         None
     }
+
+    pub fn parse(&self) -> Option<adsb::Message> {
+        match adsb::parse_binary(&self.0) {
+            Ok((message, _)) => Some(message),
+            Err(error) => {
+                error!("error parsing ads-b frame {:#?}", error);
+                None
+            }
+        }
+    }
 }
+
