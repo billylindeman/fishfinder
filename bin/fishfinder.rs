@@ -1,4 +1,4 @@
-use failure::*;
+//use failure::*;
 use log::*;
 use std::error::Error;
 use structopt::StructOpt;
@@ -7,7 +7,7 @@ use fishfinder::sdr::{dsp, mode_s, rtl};
 use std::pin::Pin;
 use tokio::io::AsyncRead;
 use tokio_stream::{Stream, StreamExt};
-use tokio_util::codec::{BytesCodec, FramedRead};
+use tokio_util::codec::FramedRead;
 
 #[derive(StructOpt)]
 #[structopt(name = "fishfinder", about = "ads-b tracker for rtl-sdr")]
@@ -58,30 +58,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
-//
-//fn main() -> Result<(), Box<dyn std::error::Error>> {
-//    crossbeam::thread::scope(move |scope| {
-//        // setup iq sample buffer
-//        let iq_sample_src = match args.path {
-//            Some(path) => {
-//                let sdr = sdr::FileSDR { path: path };
-//                sdr.produce(scope)
-//            }
-//            _ => {
-//                let sdr = sdr::RtlSDR { device_id: 0 };
-//                sdr.produce(scope)
-//            }
-//        };
-//
-//        let signal_src = sdr::decode::ConvertIQToMagnitude::transform(scope, iq_sample_src);
-//        let frame_src = sdr::decode::ModeSFrameDetector::transform(scope, signal_src);
-//
-//        sdr::decode::ModeSFrameDecoder::consume(frame_src);
-//    })
-//    .unwrap();
-//
-//    // decoder
-//    Ok(())
-//}
 
