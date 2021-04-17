@@ -1,13 +1,14 @@
 //use failure::*;
 use log::*;
 use std::error::Error;
-use structopt::StructOpt;
-
-use fishfinder::sdr::{dsp, mode_s, rtl};
 use std::pin::Pin;
+use structopt::StructOpt;
 use tokio::io::AsyncRead;
 use tokio_stream::{Stream, StreamExt};
 use tokio_util::codec::FramedRead;
+
+use fishfinder::adsb;
+use fishfinder::sdr::{dsp, mode_s, rtl};
 
 #[derive(StructOpt)]
 #[structopt(name = "fishfinder", about = "ads-b tracker for rtl-sdr")]
@@ -50,12 +51,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
         _ => create_stream(rtl::Radio::open(rtl::RadioConfig::mode_s(0))),
     };
 
+    let mut tracker = adsb::Tracker::new();
+
     while let Some(frame) = stream.next().await {
         info!("got frame: {:#?}", frame);
+
+        tracker.process(&frame);
+        tracker.print();
     }
 
     trace!("stream ended");
 
     Ok(())
 }
-
