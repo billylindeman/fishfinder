@@ -52,12 +52,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let mut tracker = adsb::Tracker::new();
+    let mut frame_count = 0u32;
 
     while let Some(frame) = stream.next().await {
         info!("got frame: {:#?}", frame);
 
-        tracker.process(&frame);
-        tracker.print();
+        //        tracker.process(&frame);
+        //       tracker.print();
+        frame_count += 1;
+        info!("total frames recvd: {}", frame_count);
     }
 
     trace!("stream ended");

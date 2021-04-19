@@ -84,6 +84,23 @@ impl FrameDecoder {
         return bits;
     }
 
+    // phase correction (sorta) from dump1090
+    // @todo replace this with a proper phase correction
+    // on the upstream IQ samples
+    fn apply_phase_correction(s: FrameSamples) -> FrameSamples {
+        let mut m: FrameSamples = s;
+
+        for i in (0..(MODES_LONG_MSG_BITS - 1 * 2)).step_by(2) {
+            if m[i] > m[i + 1] {
+                m[i + 2] = m[i + 2] * 5 / 4;
+            } else {
+                m[i + 2] = m[i + 2] * 4 / 5;
+            }
+        }
+
+        m
+    }
+
     fn pack_bits(bits: FrameBits) -> Frame {
         /* Pack bits into bytes */
         let mut frame_bytes = [0; MODES_LONG_MSG_BYTES];
@@ -136,6 +153,8 @@ impl codec::Decoder for FrameDecoder {
         let mut frame_samples: [u8; MODES_LONG_MSG_BITS * 2] = [0; MODES_LONG_MSG_BITS * 2];
         let s = &src[0..(MODES_LONG_MSG_BITS * 2)];
         frame_samples.clone_from_slice(s);
+
+        //let frame_samples = FrameDecoder::apply_phase_correction(frame_samples);
 
         let frame_bits = FrameDecoder::demodulate_samples_to_bits(frame_samples);
         let frame = FrameDecoder::pack_bits(frame_bits);
@@ -196,4 +215,3 @@ impl Frame {
         }
     }
 }
-
