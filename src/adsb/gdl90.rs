@@ -4,6 +4,8 @@ use bytes::BytesMut;
 use std::io::{Result, Write};
 
 use adsb::ICAOAddress;
+use tokio_util::codec;
+
 // MessageType refers to the GDL90 Message identifier
 // (byte 1 in a payload)
 enum MessageType {
@@ -54,7 +56,7 @@ pub struct HeartbeatStatus {
 }
 
 impl BinWrite for HeartbeatStatus {
-    fn write_options<W: Write>(&self, writer: &mut W, options: &WriterOption) -> Result<()> {
+    fn write_options<W: Write>(&self, writer: &mut W, _options: &WriterOption) -> Result<()> {
         let mut b1 = 0u8;
         b1.set_bit(0, self.uat_initialized);
         b1.set_bit(2, self.ratcs);
@@ -125,6 +127,8 @@ pub struct Traffic {
     altitude: u16,
 }
 
+// Foreflight Extended Specification
+// https://www.foreflight.com/connect/spec
 #[derive(BinWrite)]
 pub struct ForeflightIdentify {
     version: u8,
@@ -141,15 +145,11 @@ pub enum Message {
     OwnshipReport(Ownship),
     OwnshipGeometricAltitude(OwnshipGeometricAltitude),
     TrafficReport(Traffic),
-    // Foreflight Extended Specification
-    // https://www.foreflight.com/connect/spec
     ForeflightIdentify(ForeflightIdentify),
 }
 
 impl BinWrite for Message {
     fn write_options<W: Write>(&self, writer: &mut W, options: &WriterOption) -> Result<()> {
-        writer.write(&[0x7E])?;
-
         let id: u8;
         let mut frame = Vec::<u8>::new();
 
@@ -184,9 +184,49 @@ impl BinWrite for Message {
         writer.write(&frame)?;
         writer.write(&crc)?;
 
-        writer.write(&[0x7E])?;
         Ok(())
     }
 }
 
-pub struct GDLEncoder {}
+pub struct Encoder {}
+impl codec::Encoder<Message> for Encoder {
+    type Error = std::io::Error;
+
+    fn encode(&mut self, item: Message, dst: &mut BytesMut) -> Result<()> {
+        let id: u8;
+        let mut frame = Vec::<u8>::new();
+
+        match item {
+            Message::Heartbeat(msg) => {
+                id = MessageType::Heartbeat as u8;
+                msg.write(&mut frame)?;
+            }
+            Message::OwnshipReport(msg) => {
+                id = MessageType::OwnshipReport as u8;
+                msg.write(&mut frame)?;
+            }
+            Message::OwnshipGeometricAltitude(msg) => {
+                id = MessageType::OwnshipGeometricAltitude as u8;
+                msg.write(&mut frame)?;
+            }
+            Message::TrafficReport(msg) => {
+                id = MessageType::TrafficReport as u8;
+                msg.write(&mut frame)?;
+            }
+            Message::ForeflightIdentify(msg) => {
+                id = MessageType::Foreflight as u8;
+                msg.write(&mut frame)?;
+            }
+        }
+
+        let mut digest = crc16::State::<crc16::CCITT_FALSE>::new();
+        digest.update(&frame);
+        let crc = digest.get().to_le_bytes();
+
+        dst.extend_from_slice(&[id]);
+        dst.extend_from_slice(&frame);
+        dst.extend_from_slice(&crc);
+
+        Ok(())
+    }
+}

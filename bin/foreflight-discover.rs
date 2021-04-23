@@ -26,7 +26,9 @@ impl Server {
     }
 }
 
-struct GDL90Client {}
+struct ClientHandle {
+    socket: UdpSocket,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -47,4 +49,3 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
