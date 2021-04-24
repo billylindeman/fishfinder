@@ -108,10 +108,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
             let msg = gdl90::Message::ForeflightIdentify(gdl90::ForeflightIdentify {
                 version: 1,
-                serial_number: 420420420,
-                device_name: [0x62, 0x69, 0x6C, 0x6C, 0x79, 0x0A, 0, 0],
-                device_name_long: [0; 16],
-                capabilities: 0,
+                serial_number: 0xFFFFFFFFFFFFFFFF,
+                device_name: "fish".to_string(),
+                device_name_long: "fishfinder".to_string(),
+                capabilities: 1,
             });
 
             match tx.send(msg) {

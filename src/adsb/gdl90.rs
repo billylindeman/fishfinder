@@ -66,7 +66,7 @@ impl Default for HeartbeatStatus {
             addr_type: false,
             ident: false,
             maintainance_required: false,
-            gps_pos_valid: true,
+            gps_pos_valid: false,
             utc_ok: false,
             csa_not_available: false,
             csa_not_requested: false,
@@ -115,9 +115,6 @@ impl Default for Heartbeat {
 }
 
 #[derive(BinWrite, Clone, Copy, Debug)]
-pub struct Ownship {}
-
-#[derive(BinWrite, Clone, Copy, Debug)]
 pub struct OwnshipGeometricAltitude {}
 
 #[derive(Clone, Copy, Debug)]
@@ -155,69 +152,44 @@ pub struct Traffic {
     latitude: u32,
     longitude: u32,
     altitude: u16,
+    //todo finish implement
 }
 
 // Foreflight Extended Specification
 // https://www.foreflight.com/connect/spec
-#[derive(BinWrite, Clone, Copy, Debug)]
+#[derive(BinWrite, Clone, Debug)]
 pub struct ForeflightIdentify {
     pub version: u8,
+    #[binwrite(big)]
     pub serial_number: u64,
-    pub device_name: [u8; 8],
-    pub device_name_long: [u8; 16],
+    #[binwrite(preprocessor(string_to_sized_vec(8)))]
+    pub device_name: String,
+    #[binwrite(preprocessor(string_to_sized_vec(16)))]
+    pub device_name_long: String,
+    #[binwrite(big)]
     pub capabilities: u32,
+}
+
+fn string_to_sized_vec(len: usize) -> impl Fn(&String) -> Vec<u8> {
+    move |s| {
+        let mut b = vec![0; len];
+        for (dst, src) in b.iter_mut().zip(s.as_bytes().iter()) {
+            *dst = *src
+        }
+        b
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct ForeflightAHRS {}
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum Message {
     Heartbeat(Heartbeat),
-    OwnshipReport(Ownship),
+    OwnshipReport(Traffic),
     OwnshipGeometricAltitude(OwnshipGeometricAltitude),
     TrafficReport(Traffic),
     ForeflightIdentify(ForeflightIdentify),
-}
-
-impl BinWrite for Message {
-    fn write_options<W: Write>(&self, writer: &mut W, options: &WriterOption) -> Result<()> {
-        let id: u8;
-        let mut frame = Vec::<u8>::new();
-
-        match self {
-            Message::Heartbeat(msg) => {
-                id = MessageType::Heartbeat as u8;
-                msg.write_options(&mut frame, options)?;
-            }
-            Message::OwnshipReport(msg) => {
-                id = MessageType::OwnshipReport as u8;
-                msg.write_options(&mut frame, options)?;
-            }
-            Message::OwnshipGeometricAltitude(msg) => {
-                id = MessageType::OwnshipGeometricAltitude as u8;
-                msg.write_options(&mut frame, options)?;
-            }
-            Message::TrafficReport(msg) => {
-                id = MessageType::TrafficReport as u8;
-                msg.write_options(&mut frame, options)?;
-            }
-            Message::ForeflightIdentify(msg) => {
-                id = MessageType::Foreflight as u8;
-                msg.write_options(&mut frame, options)?;
-            }
-        }
-
-        let mut digest = crc16::State::<crc16::CCITT_FALSE>::new();
-        digest.update(&frame);
-        let crc = digest.get().to_le_bytes();
-
-        writer.write(&[id])?;
-        writer.write(&frame)?;
-        writer.write(&crc)?;
-
-        Ok(())
-    }
 }
 
 pub struct Encoder {}
