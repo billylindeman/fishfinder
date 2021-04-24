@@ -1,6 +1,6 @@
 use binwrite::{BinWrite, WriterOption};
 use bitfield::{Bit, BitRange};
-use bytes::BytesMut;
+use bytes::{BufMut, BytesMut};
 use log::*;
 use std::io::{Result, Write};
 
@@ -149,10 +149,9 @@ pub struct Traffic {
     #[binwrite(preprocessor(address_type_to_u8))]
     address_type: TrafficAddressType,
     participant_address: [u8; 3],
-    latitude: u32,
-    longitude: u32,
+    latitude: [u8; 3],  //24bit signed fraction
+    longitude: [u8; 3], //24bit signed fraction
     altitude: u16,
-    //todo finish implement
 }
 
 // Foreflight Extended Specification
@@ -232,11 +231,11 @@ impl codec::Encoder<Message> for Encoder {
 
         let crc = fcs_crc16_compute(&frame);
 
-        dst.extend_from_slice(&[0x7E]);
-        dst.extend_from_slice(&[id]);
-        dst.extend_from_slice(&frame);
-        dst.extend_from_slice(&(crc.to_le_bytes()));
-        dst.extend_from_slice(&[0x7E]);
+        dst.put_slice(&[0x7E]);
+        dst.put_slice(&[id]);
+        dst.put_slice(&frame);
+        dst.put_slice(&(crc.to_le_bytes()));
+        dst.put_slice(&[0x7E]);
 
         let b: &[u8] = &dst;
         trace!("sent bytes: {:X?}", b);
@@ -273,10 +272,8 @@ const FCS_CRC16_TABLE: [u16; 256] = [
 
 pub fn fcs_crc16_compute(data: &[u8]) -> u16 {
     let mut ret = 0u16;
-
     for i in 0..data.len() {
         ret = (FCS_CRC16_TABLE[(ret >> 8) as usize] ^ (ret << 8)) ^ (data[i] as u16);
     }
-
     ret
 }
