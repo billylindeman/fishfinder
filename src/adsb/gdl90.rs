@@ -11,7 +11,7 @@ use tokio_util::codec;
 enum MessageType {
     Heartbeat = 0,
     Initialization = 2,
-    UplinkDataOut = 7,
+    UplinkDataOut = 7, // UAT Uplink (TIS-B,FIS-B)
     HeightAboveTerrain = 9,
     OwnshipReport = 10,
     OwnshipGeometricAltitude = 11,
@@ -23,6 +23,7 @@ enum MessageType {
     Foreflight = 0x65,
 }
 
+#[derive(Clone, Copy)]
 pub struct HeartbeatStatus {
     //Byte 1
     //Bit 7: GPS Pos Valid
@@ -77,17 +78,17 @@ impl BinWrite for HeartbeatStatus {
     }
 }
 
-#[derive(BinWrite)]
+#[derive(BinWrite, Clone, Copy)]
 pub struct Heartbeat {
     status: HeartbeatStatus,
     timestamp: u16,
     msg_counts: u16,
 }
 
-#[derive(BinWrite)]
+#[derive(BinWrite, Clone, Copy)]
 pub struct Ownship {}
 
-#[derive(BinWrite)]
+#[derive(BinWrite, Clone, Copy)]
 pub struct OwnshipGeometricAltitude {}
 
 #[derive(Clone, Copy)]
@@ -115,7 +116,7 @@ fn address_type_to_u8(a: &TrafficAddressType) -> u8 {
     *a as u8
 }
 
-#[derive(BinWrite)]
+#[derive(BinWrite, Clone, Copy)]
 pub struct Traffic {
     #[binwrite(preprocessor(tas_to_u8))]
     traffic_alert_status: TrafficAlertStatus, //Traffic Alert Status
@@ -129,7 +130,7 @@ pub struct Traffic {
 
 // Foreflight Extended Specification
 // https://www.foreflight.com/connect/spec
-#[derive(BinWrite)]
+#[derive(BinWrite, Clone, Copy)]
 pub struct ForeflightIdentify {
     version: u8,
     serial_number: u64,
@@ -138,8 +139,10 @@ pub struct ForeflightIdentify {
     capabilities: u8,
 }
 
+#[derive(Clone, Copy)]
 pub struct ForeflightAHRS {}
 
+#[derive(Clone, Copy)]
 pub enum Message {
     Heartbeat(Heartbeat),
     OwnshipReport(Ownship),
@@ -189,6 +192,12 @@ impl BinWrite for Message {
 }
 
 pub struct Encoder {}
+impl Encoder {
+    pub fn new() -> Encoder {
+        Encoder {}
+    }
+}
+
 impl codec::Encoder<Message> for Encoder {
     type Error = std::io::Error;
 

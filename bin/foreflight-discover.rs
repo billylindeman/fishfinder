@@ -1,9 +1,16 @@
 #![warn(rust_2018_idioms)]
 
+use futures::{Sink, SinkExt};
 use std::error::Error;
 use std::net::SocketAddr;
 use std::{env, io};
 use tokio::net::UdpSocket;
+use tokio::sync::broadcast;
+use tokio_stream::{wrappers::BroadcastStream, StreamExt};
+
+use tokio_util::{codec, udp};
+
+use fishfinder::adsb::gdl90;
 
 struct Server {
     socket: UdpSocket,
@@ -13,6 +20,8 @@ struct Server {
 impl Server {
     async fn run(self) -> Result<(), io::Error> {
         let Server { socket, mut buf } = self;
+
+        tokio::task::spawn(async move || {});
 
         loop {
             let (len, addr) = socket.recv_from(&mut buf).await?;
@@ -26,8 +35,22 @@ impl Server {
     }
 }
 
-struct ClientHandle {
-    socket: UdpSocket,
+async fn handle_foreflight_client(
+    addr: String,
+    rx: broadcast::Receiver<gdl90::Message>,
+) -> Result<(), io::Error> {
+    let sock = UdpSocket::bind("0.0.0.0:0").await?;
+
+    let dest: SocketAddr = addr.parse().expect("Unable to parse socket address");
+
+    let mut framed_encoder = udp::UdpFramed::new(sock, gdl90::Encoder::new());
+    let mut msg_stream = BroadcastStream::new(rx)
+        .filter(Result::is_ok)
+        .map(|m| Ok((m.unwrap(), dest)));
+
+    framed_encoder.send_all(&mut msg_stream).await?;
+
+    Ok(())
 }
 
 #[tokio::main]

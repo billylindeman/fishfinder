@@ -20,12 +20,13 @@ rtlsdr_mt = "2.1.0"
 structopt = "0.3.21"
 tokio = { version = "1.4.0", features = ["full", "tracing"] }
 tokio-util = { version = "0.6.6", features = ["full"] }
-tokio-stream = { version = "0.1" }
+tokio-stream = { version = "0.1", features = ["sync"] }
 pin-utils = "0.1.0"
 bytes = "1.0.1"
 binwrite = "0.2.1"
 crc16 = "0.4.0"
 bitfield = "0.13.2"
+futures = "0.3.14"
 
 
 [[bin]]
