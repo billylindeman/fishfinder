@@ -27,6 +27,7 @@ binwrite = "0.2.1"
 crc16 = "0.4.0"
 bitfield = "0.13.2"
 futures = "0.3.14"
+tokio-timer = "0.2.13"
 
 
 [[bin]]
