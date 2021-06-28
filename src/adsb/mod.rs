@@ -3,6 +3,8 @@ use std::collections::HashMap;
 
 pub use adsb::{ADSBMessageKind, ICAOAddress, Message, MessageKind};
 
+pub mod gdl90;
+
 pub struct Aircraft {
     icao: ICAOAddress,
     reg: Option<String>,
